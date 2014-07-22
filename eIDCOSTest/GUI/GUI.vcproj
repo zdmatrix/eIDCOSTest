@@ -5,6 +5,10 @@
 	Name="GUI"
 	ProjectGUID="{52DEF645-D9BB-430C-B0E8-A7A4867AB51F}"
 	RootNamespace="GUI"
+	SccProjectName="Svn"
+	SccAuxPath="Svn"
+	SccLocalPath="Svn"
+	SccProvider="SubversionScc"
 	Keyword="ManagedCProj"
 	>
 	<Platforms>
