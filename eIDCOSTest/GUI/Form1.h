@@ -22,8 +22,21 @@ namespace GUI {
 	public ref class Form1 : public System::Windows::Forms::Form
 	{
 	public:
+
+		HANDLE handle;
+
+		int ReaderCounter;
+		LONG ret;
+
+		array<String^>^ ReaderName;
+
 		Form1(void)
 		{
+			handle = NULL;
+
+			ReaderCounter = 0;
+			ReaderName = gcnew array<String^>(16);
+
 			InitializeComponent();
 			//
 			//TODO: 在此处添加构造函数代码
@@ -243,12 +256,21 @@ namespace GUI {
 
 			 private:System::Void From1_Shown(System::Object^ sender, System::EventArgs^ s){
 
-						 for ( int x = 1; x <= 50; x++ )
-						 {
-							 comboBox1->Items->Add( String::Format( "Item {0}", x ) );
+						 cli::pin_ptr<int> pReaderCounter = &ReaderCounter;
+						 char readernametemp[MAX_READER_NAME];
+						 int offset = 0;
 
+						 ret = PCSC_GetReaderList(handle, pReaderCounter, readernametemp);
+						 if(ret == 0x9000){
+							 for(int i = 0; i < ReaderCounter; i ++){
+								 ReaderName[i] = String(readernametemp + offset).ToString();
+								 offset += strlen(readernametemp);
+								 offset += 1;
+								 comboBox1->Items->Add(ReaderName[i]);
+							 }
+							 
 						 }
-						 
+
 					 }
 
 private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
