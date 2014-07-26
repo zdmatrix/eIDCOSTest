@@ -320,42 +320,57 @@ namespace GUI {
 
 			private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 						 SeclectReader = comboBox1->SelectedItem->ToString();
+/*
 						 char* str = (char*)(void*)Marshal::StringToHGlobalAnsi(SeclectReader);
 						 cli::pin_ptr<HANDLE> pHandle = &handle;
 						 
 						 while((ret = PCSC_OpenReader(pHandle, (const char*)str)) != EXCUTE_SUC){
+//						 if((ret = PCSC_OpenReader(pHandle, (const char*)str)) != EXCUTE_SUC){
 							 ShowErrorDescription(ret);
+							 
 						 }
-						 
+*/						 
 					 }
 
 		 
 private: System::Void btnGeneralRSAKey_Click(System::Object^  sender, System::EventArgs^  e) {
-			 
-			 nBtnClickedTimes ++;
 
 			 cli::pin_ptr<BYTE> pAPDUCmd = &bAPDUCmd[0];
 			 cli::pin_ptr<BYTE>	pResponseData = &bReaponseData[0];
 			 cli::pin_ptr<int> pResponseLength = &nResponseLength;
 
+
+			 char* str = (char*)(void*)Marshal::StringToHGlobalAnsi(SeclectReader);
+			 cli::pin_ptr<HANDLE> pHandle = &handle;
+
+			 if((ret = PCSC_OpenReader(pHandle, (const char*)str)) != EXCUTE_SUC){
+				 ShowErrorDescription(ret);
+				 return;
+
+			 }
+
 			 GetAPDUCmd(ENABLETIMER, bAPDUCmd);
 			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, ENABLETIMER->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
 				 ShowErrorDescription(ret);
+				 return;
 			 }
 
 			 GetAPDUCmd(RSALOADDATA, bAPDUCmd);
 			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, RSALOADDATA->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
 				 ShowErrorDescription(ret);
+				 return;
 			 }
 
 			 GetAPDUCmd(GENERATERSACMD, bAPDUCmd);
 			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, GENERATERSACMD->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
 				 ShowErrorDescription(ret);
+				 return;
 			 }
 
 			 GetAPDUCmd(GETCYCLE, bAPDUCmd);
 			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, GETCYCLE->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
 				 ShowErrorDescription(ret);
+				 return;
 			 }
 
 			 String^ tmp = gcnew String("");
@@ -364,6 +379,8 @@ private: System::Void btnGeneralRSAKey_Click(System::Object^  sender, System::Ev
 			 }
 
 			 nTimes = Convert::ToUInt64(tmp, 16);
+
+			 nBtnClickedTimes ++;
 
 			 ShowResault(nBtnClickedTimes, nTimes);
 			
