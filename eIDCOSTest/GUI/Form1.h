@@ -10,6 +10,8 @@ namespace GUI {
 	using namespace System::Data;
 	using namespace System::Drawing;
 
+	using namespace System::Runtime::InteropServices;
+
 	/// <summary>
 	/// Form1 摘要
 	///
@@ -25,17 +27,55 @@ namespace GUI {
 
 		HANDLE handle;
 
-		int ReaderCounter;
+		int nReaderCounter;
+		int nResponseLength;
+		int nBtnClickedTimes;
+		UINT nTimes; 
+
 		LONG ret;
 
 		array<String^>^ ReaderName;
+		String^ ErrorDescription;
+		String^ SeclectReader;
+		
+		String^ RSALOADDATA;
+		String^ GENERATERSACMD;
+		String^ ENABLETIMER;
+		String^ DISENABLETIMER;
+		String^ GETCYCLE;
+
+		array<BYTE>^ bAPDUCmd;
+		array<BYTE>^ bReaponseData;
+
+		
+
+		const static int	CLA = 0;
+		const static int	INS = 1;
+		const static int	P1 = 2;
+		const static int	P2 = 3;
+		const static int	P3 = 4;
 
 		Form1(void)
 		{
-			handle = NULL;
+			handle = nullptr;
 
-			ReaderCounter = 0;
+			nReaderCounter = 0;
+			nResponseLength = 0;
+			nBtnClickedTimes = 0;
+			nTimes = 0;
+
 			ReaderName = gcnew array<String^>(16);
+			ErrorDescription = nullptr;
+			SeclectReader = nullptr;
+
+			RSALOADDATA = gcnew String("80D10000060C6000010001");
+			GENERATERSACMD = gcnew String("80F50100020020");
+			ENABLETIMER = gcnew String("80D3010000");
+			DISENABLETIMER = gcnew String("80D30F0000");
+			GETCYCLE = gcnew String("80D4000004");
+
+			bAPDUCmd = gcnew array<BYTE>(MAX_APDU_LENGTH); 
+			bReaponseData = gcnew array<BYTE>(MAX_RESPDATA_LENGTH);
 
 			InitializeComponent();
 			//
@@ -172,6 +212,7 @@ namespace GUI {
 			this->btnGeneralRSAKey->TabIndex = 2;
 			this->btnGeneralRSAKey->Text = L"生成RSA公私钥";
 			this->btnGeneralRSAKey->UseVisualStyleBackColor = true;
+			this->btnGeneralRSAKey->Click += gcnew System::EventHandler(this, &Form1::btnGeneralRSAKey_Click);
 			// 
 			// textBox1
 			// 
@@ -256,29 +297,120 @@ namespace GUI {
 
 			 private:System::Void From1_Shown(System::Object^ sender, System::EventArgs^ s){
 
-						 cli::pin_ptr<int> pReaderCounter = &ReaderCounter;
+						 nBtnClickedTimes = 0;
+						 textBox1->Text = "";
+
+						 cli::pin_ptr<int> pReaderCounter = &nReaderCounter;
 						 char readernametemp[MAX_READER_NAME];
 						 int offset = 0;
 
-						 ret = PCSC_GetReaderList(handle, pReaderCounter, readernametemp);
-						 if(ret == 0x9000){
-							 for(int i = 0; i < ReaderCounter; i ++){
-								 ReaderName[i] = String(readernametemp + offset).ToString();
-								 offset += strlen(readernametemp);
-								 offset += 1;
-								 comboBox1->Items->Add(ReaderName[i]);
-							 }
-							 
+						 while((ret = PCSC_GetReaderList(pReaderCounter, readernametemp)) != EXCUTE_SUC){
+							 ShowErrorDescription(ret);
 						 }
-
+						 
+						 for(int i = 0; i < nReaderCounter; i ++){
+							 ReaderName[i] = String(readernametemp + offset).ToString();
+							 offset += strlen(readernametemp);
+							 offset += 1;
+							 comboBox1->Items->Add(ReaderName[i]);
+						 }
+							 
+						 						 
 					 }
 
-private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if(comboBox1->SelectedItem->Equals((String^)"Item 1")){
-				textBox1->Text = "测试成功";
+			private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+						 SeclectReader = comboBox1->SelectedItem->ToString();
+						 char* str = (char*)(void*)Marshal::StringToHGlobalAnsi(SeclectReader);
+						 cli::pin_ptr<HANDLE> pHandle = &handle;
+						 
+						 while((ret = PCSC_OpenReader(pHandle, (const char*)str)) != EXCUTE_SUC){
+							 ShowErrorDescription(ret);
+						 }
+						 
+					 }
+
+		 
+private: System::Void btnGeneralRSAKey_Click(System::Object^  sender, System::EventArgs^  e) {
+			 
+			 nBtnClickedTimes ++;
+
+			 cli::pin_ptr<BYTE> pAPDUCmd = &bAPDUCmd[0];
+			 cli::pin_ptr<BYTE>	pResponseData = &bReaponseData[0];
+			 cli::pin_ptr<int> pResponseLength = &nResponseLength;
+
+			 GetAPDUCmd(ENABLETIMER, bAPDUCmd);
+			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, ENABLETIMER->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
+				 ShowErrorDescription(ret);
 			 }
 
+			 GetAPDUCmd(RSALOADDATA, bAPDUCmd);
+			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, RSALOADDATA->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
+				 ShowErrorDescription(ret);
+			 }
+
+			 GetAPDUCmd(GENERATERSACMD, bAPDUCmd);
+			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, GENERATERSACMD->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
+				 ShowErrorDescription(ret);
+			 }
+
+			 GetAPDUCmd(GETCYCLE, bAPDUCmd);
+			 if((ret = PCSC_ApduT0(handle, pAPDUCmd, GETCYCLE->Length / 2, pResponseData, pResponseLength)) != EXCUTE_SUC){
+				 ShowErrorDescription(ret);
+			 }
+
+			 String^ tmp = gcnew String("");
+			 for(int i = 0; i < nResponseLength; i ++){
+				 tmp += Convert::ToString(bReaponseData[i], 16);
+			 }
+
+			 nTimes = Convert::ToUInt64(tmp, 16);
+
+			 ShowResault(nBtnClickedTimes, nTimes);
+			
 		 }
+
+
+		 private: System::Void GetAPDUCmd(String^ strAPDU, array<BYTE>^ apdu){
+
+					  int length = strAPDU->Length / 2;
+
+					  for(int i = 0; i < length; i ++){
+						  apdu[i] = safe_cast<BYTE>(Convert::ToSByte(strAPDU->Substring(i * 2, 2), 16));					 
+					  }
+
+				  } 
+
+
+		 private: System::Void ShowErrorDescription(LONG ret){
+					  LPVOID lpMsgBuf;
+
+					  FormatMessage(
+						  FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+						  FORMAT_MESSAGE_FROM_SYSTEM |
+						  FORMAT_MESSAGE_IGNORE_INSERTS,
+						  NULL,
+						  (DWORD)ret,
+						  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+						  (LPTSTR) &lpMsgBuf,
+						  0, NULL );
+					  ErrorDescription = String((LPTSTR)lpMsgBuf).ToString();
+
+					  MessageBox::Show("错误代码： 0x" + Convert::ToString(ret, 16) +
+						  "\n错误原因： " + ErrorDescription);
+				  }
+
+		 
+
+		 private: System::Void ShowResault(int clicktimes, int times){
+
+					  String^ str = Convert::ToString(clicktimes, 10) + "#: " + 
+						  btnGeneralRSAKey->Text->ToString() + "成功！" + Environment::NewLine +
+						  "    共花费时钟周期： " + Convert::ToString(safe_cast<Int64>(times), 10) +
+						  Environment::NewLine;
+
+					  textBox1->AppendText(str + Environment::NewLine);
+					  textBox1->ScrollToCaret();
+				  } 
 };
 }
 

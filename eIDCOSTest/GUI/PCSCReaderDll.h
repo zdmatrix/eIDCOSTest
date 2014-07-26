@@ -13,7 +13,17 @@
 
 #define CCONV _stdcall//WINAPI
 
-#define EXCUTE_SUC 0x9000
-#define MAX_READER_NAME 4096
+#define MAX_READER				16
+#define MAX_READER_NAME			4096
+#define MAX_RESPDATA_LENGTH		261
+#define RESPONECMD_LEN			5
+#define MAX_APDU_LENGTH			260
 
-PCSCREADERDLL_API LONG CCONV PCSC_GetReaderList(HANDLE ContextNo, int * ReaderCount, char ReaderName[MAX_READER_NAME]);
+#define EXCUTE_SUC				0x9000
+
+#define ILLEGAL_APDU_LENGTH		0x00010001		//非法APDU长度
+#define ILLEGAL_APDU_CASE		0x00010002		//非法APDU结构
+
+PCSCREADERDLL_API LONG CCONV PCSC_GetReaderList(int * ReaderCount, char ReaderName[MAX_READER_NAME]);
+PCSCREADERDLL_API LONG CCONV PCSC_OpenReader(HANDLE *hReader, const char *ReaderName);
+PCSCREADERDLL_API LONG CCONV PCSC_ApduT0( HANDLE hReader,  unsigned char *apduData, int srAPDULen, unsigned char *respData, int *respDataLen);
